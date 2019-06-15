@@ -4,39 +4,33 @@ package com.usr.readqrcode;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
-import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.method.LinkMovementMethod;
 import android.util.Log;
-import android.util.SparseArray;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.View;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.vision.CameraSource;
-import com.google.android.gms.vision.Detector;
-import com.google.android.gms.vision.barcode.Barcode;
-import com.google.android.gms.vision.barcode.BarcodeDetector;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
-import java.io.IOError;
-import java.io.IOException;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity {
-    private TextView textView;
+    private TextView driver, boxedID, link;
     private IntentIntegrator scanIntegrator;
     private String result; //存讀取RQCode的結果
-
+    private String driverID, boxedLunchID, time, web;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        textView = findViewById(R.id.textView);
+        driver = findViewById(R.id.driver);
+        boxedID = findViewById(R.id.boxed);
+        link = findViewById(R.id.link);
     }
 
     public void DoScan(View view) {
@@ -55,19 +49,31 @@ public class MainActivity extends AppCompatActivity {
                 String scanContent = scanningResult.getContents();
                 if (!scanContent.equals("")) {
                     result = scanContent;
-                    textView.setText(result);
+                    Log.e("result", result);
+                    try {
+                        JSONObject jsonObject = new JSONObject(result);
+                        driverID = jsonObject.getString("driver");
+                        Log.e("driver", driverID);
+                        boxedLunchID = jsonObject.getString("boxedLunchID");
+                        time = jsonObject.getString("time");
+                        web = jsonObject.getString("web");
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    driver.setText("Arduino ID : " + driverID);
+                    boxedID.setText("便當ID : " + boxedLunchID);
+                    link.setMovementMethod(LinkMovementMethod.getInstance());
                     new AlertDialog.Builder(MainActivity.this)
                             .setCancelable(false)
                             .setTitle("確認前往此連結?")
                             .setPositiveButton("前往", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {
-                                    Uri uri = Uri.parse(result);
+                                    Uri uri = Uri.parse(web);
                                     Intent intent = new Intent(Intent.ACTION_VIEW, uri);
                                     try {
                                         startActivity(intent);
                                     }catch (Exception e){
-                                        textView.setText(result);
                                         Log.e("receiveDetections", "ERROR: "+e.toString());
                                     }
                                 }
@@ -75,7 +81,6 @@ public class MainActivity extends AppCompatActivity {
                             .setNegativeButton("取消", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {
-                                    textView.setText(result);
 
                                 }
                             })
@@ -84,7 +89,18 @@ public class MainActivity extends AppCompatActivity {
             }
         } else {
             super.onActivityResult(requestCode, resultCode, intent);
-            textView.setText("讀取發生錯誤!");
+            Toast.makeText(this, "讀取發生錯誤!", Toast.LENGTH_SHORT);
+//            textView.setText("讀取發生錯誤!");
+        }
+    }
+
+    public void doLink(View view) {
+        Uri uri = Uri.parse(web);
+        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+        try {
+            startActivity(intent);
+        }catch (Exception e){
+            Log.e("receiveDetections", "ERROR: "+e.toString());
         }
     }
 }
